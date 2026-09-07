@@ -1,1 +1,0 @@
-# devops-course-2026
