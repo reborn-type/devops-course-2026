@@ -1,3 +1,110 @@
+# Конфигурация сервера devops-vm
+
+## 8. Веб-сервер
+
+### 8.1. Установка и конфигурация Nginx
+
+На сервере установлен веб-сервер Nginx:
+
+```bash
+sudo apt update
+sudo apt install -y nginx
+```
+
+Основной файл конфигурации ресурса:
+
+```text
+/etc/nginx/sites-available/devops-site
+```
+
+Ресурс активирован символической ссылкой:
+
+```text
+/etc/nginx/sites-enabled/devops-site
+```
+
+Стандартный ресурс Nginx отключён удалением ссылки:
+
+```bash
+sudo rm /etc/nginx/sites-enabled/default
+```
+
+Конфигурация проверяется и применяется командами:
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+Запросы по HTTP на порту 80 перенаправляются на HTTPS с кодом 301.
+Ресурс по HTTPS обслуживается на порту 443.
+
+### 8.2. Статический ресурс и права доступа
+
+Каталог опубликованного ресурса:
+
+```text
+/var/www/devops-site
+```
+
+Владелец каталога и файлов:
+
+```text
+devops:devops
+```
+
+Права доступа:
+
+- каталоги — `755`;
+- файлы — `644`;
+- пользователь Nginx `www-data` может читать ресурс, но не может его изменять.
+
+### 8.3. Сертификат HTTPS
+
+Самоподписный сертификат расположен по пути:
+
+```text
+/etc/ssl/certs/devops.crt
+```
+
+Сертификат имеет права `644` и является открытой частью ключевой пары.
+
+Закрытый ключ расположен по пути:
+
+```text
+/etc/ssl/private/devops.key
+```
+
+Закрытый ключ принадлежит пользователю `root`, имеет права `600` и не
+копируется за пределы `/etc/ssl/private`.
+
+Сертификат и ключ сформированы командой:
+
+```bash
+sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout /etc/ssl/private/devops.key \
+  -out /etc/ssl/certs/devops.crt \
+  -subj "/CN=devops.local" \
+  -addext "subjectAltName=DNS:devops.local"
+```
+
+Срок действия сертификата — 365 дней. Имя ресурса указано в расширении
+Subject Alternative Name как `DNS:devops.local`.
+
+Проверка сертификата:
+
+```bash
+openssl x509 -in /etc/ssl/certs/devops.crt \
+  -noout -subject -issuer -dates -ext subjectAltName
+```
+
+Проверка прав закрытого ключа и сертификата:
+
+```bash
+sudo ls -l /etc/ssl/private/devops.key \
+  /etc/ssl/certs/devops.crt
+```
+
 ## 9. Контейнеризация
 
 ### 9.1. Установка Docker Engine
