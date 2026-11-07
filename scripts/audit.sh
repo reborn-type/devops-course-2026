@@ -97,3 +97,42 @@ fi
 
 exit 0
 
+
+echo "[5] Контейнеризация"
+
+check \
+    "Служба Docker активна" \
+    systemctl is-active docker
+
+check \
+    "Контейнер PostgreSQL находится в состоянии healthy" \
+    bash -c '
+        test "$(docker inspect -f "{{.State.Health.Status}}" app-db-1)" = "healthy"
+    '
+
+check \
+    "Порты контейнеров опубликованы безопасно" \
+    bash -c '
+        bad_sockets="$(
+            ss -H -tln |
+            awk '"'"'
+                $4 ~ /:(5000|5432)$/ &&
+                $4 != "127.0.0.1:5000" {
+                    print
+                }
+            '"'"'
+        )"
+
+        if [[ -n "${bad_sockets}" ]]; then
+            printf "%s\n" "${bad_sockets}"
+            exit 1
+        fi
+    '
+
+check \
+    "Файл ~/app/.env имеет права 600" \
+    bash -c '
+        test "$(stat -c "%a" "${HOME}/app/.env")" = "600"
+    '
+
+
